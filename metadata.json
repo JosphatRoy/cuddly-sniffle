@@ -1,0 +1,6 @@
+{
+  "name": "Milk Delivery & Sales",
+  "description": "Helps dairy farmers manage milk orders, optimize delivery routes, and enables distributors to execute real-time deliveries with live map simulations and payment logging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
