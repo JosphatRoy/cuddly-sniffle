@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface OrderStatusLogDao {
     @Insert
-    suspend fun insert(log: OrderStatusLog)
+    suspend fun insert(log: OrderStatusLog): Long
 
     @Query("SELECT * FROM order_status_logs WHERE orderId = :orderId ORDER BY timestamp DESC")
     fun getLogsForOrder(orderId: Int): Flow<List<OrderStatusLog>>

@@ -24,11 +24,22 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 val orderMap = hashMapOf(
                     "id" to order.id,
                     "customerName" to order.customerName,
-                    "status" to order.status,
-                    "paymentStatus" to order.paymentStatus,
+                    "customerPhone" to order.customerPhone,
+                    "address" to order.address,
                     "liters" to order.liters,
                     "pricePerLiter" to order.pricePerLiter,
+                    "routeName" to order.routeName,
+                    "routeOrder" to order.routeOrder,
+                    "status" to order.status,
+                    "paymentStatus" to order.paymentStatus,
+                    "paymentMethod" to order.paymentMethod,
+                    "notes" to order.notes,
+                    "driverNotes" to order.driverNotes,
+                    "eta" to order.eta,
+                    "timestamp" to order.timestamp,
                     "deliveredAt" to order.deliveredAt,
+                    "deliveryPhotoUri" to order.deliveryPhotoUri,
+                    "signaturePath" to order.signaturePath,
                     "verifiedQrCode" to order.verifiedQrCode,
                     "lastUpdated" to order.lastUpdated
                 )
@@ -71,6 +82,22 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                     .await()
                 
                 database.orderStatusLogDao().markAsSynced(log.id)
+            }
+
+            // 4. Sync Activity Logs
+            val unsyncedActivities = database.activityLogDao().getUnsyncedLogs()
+            for (activity in unsyncedActivities) {
+                val activityMap = hashMapOf(
+                    "type" to activity.type,
+                    "description" to activity.description,
+                    "targetId" to activity.targetId,
+                    "timestamp" to activity.timestamp
+                )
+                firestore.collection("activity_logs").document(activity.id.toString())
+                    .set(activityMap)
+                    .await()
+                
+                database.activityLogDao().markAsSynced(activity.id)
             }
 
             Result.success()

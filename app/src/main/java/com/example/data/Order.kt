@@ -17,6 +17,8 @@ data class Order(
     val paymentStatus: String = "Unpaid", // "Paid", "Unpaid"
     val paymentMethod: String = "", // "Cash", "Mobile Money", etc.
     val notes: String = "",
+    val driverNotes: String = "", // Notes from driver to customer
+    val eta: Int? = null, // Estimated time in minutes
     val timestamp: Long = System.currentTimeMillis(),
     val deliveredAt: Long? = null,
     val deliveryPhotoUri: String? = null,

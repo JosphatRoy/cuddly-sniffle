@@ -16,7 +16,7 @@ interface OrderDao {
     fun getOrdersByRoute(routeName: String): Flow<List<Order>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrder(order: Order)
+    suspend fun insertOrder(order: Order): Long
 
     @Update
     suspend fun updateOrder(order: Order)

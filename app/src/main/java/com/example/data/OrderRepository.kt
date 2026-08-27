@@ -6,18 +6,20 @@ import kotlinx.coroutines.flow.first
 class OrderRepository(
     private val orderDao: OrderDao,
     private val paymentLogDao: PaymentLogDao,
-    private val orderStatusLogDao: OrderStatusLogDao
+    private val orderStatusLogDao: OrderStatusLogDao,
+    private val activityLogDao: ActivityLogDao
 ) {
     val allOrders: Flow<List<Order>> = orderDao.getAllOrders()
     val allPaymentLogs: Flow<List<PaymentLog>> = paymentLogDao.getAllPaymentLogs()
     val totalRevenue: Flow<Double?> = paymentLogDao.getTotalRevenue()
     val allStatusLogs: Flow<List<OrderStatusLog>> = orderStatusLogDao.getAllLogs()
+    val allActivityLogs: Flow<List<ActivityLog>> = activityLogDao.getAllLogs()
 
     fun getOrdersByRoute(routeName: String): Flow<List<Order>> = orderDao.getOrdersByRoute(routeName)
 
     fun getStatusLogsForOrder(orderId: Int): Flow<List<OrderStatusLog>> = orderStatusLogDao.getLogsForOrder(orderId)
 
-    suspend fun insert(order: Order) = orderDao.insertOrder(order)
+    suspend fun insert(order: Order): Long = orderDao.insertOrder(order)
 
     suspend fun update(order: Order) = orderDao.updateOrder(order)
 
@@ -28,6 +30,16 @@ class OrderRepository(
     suspend fun logPayment(paymentLog: PaymentLog) = paymentLogDao.insert(paymentLog)
 
     suspend fun logStatusChange(log: OrderStatusLog) = orderStatusLogDao.insert(log)
+
+    suspend fun logActivity(type: String, description: String, targetId: Int? = null) {
+        activityLogDao.insert(
+            ActivityLog(
+                type = type,
+                description = description,
+                targetId = targetId
+            )
+        )
+    }
 
     suspend fun prepopulateIfEmpty() {
         val currentOrders = allOrders.first()
@@ -121,13 +133,13 @@ class OrderRepository(
                 )
             )
             for (order in sampleOrders) {
-                orderDao.insertOrder(order)
+                val newId = orderDao.insertOrder(order).toInt()
                 
                 // If it was already delivered, log a sample payment
                 if (order.status == "Delivered") {
                     paymentLogDao.insert(
                         PaymentLog(
-                            orderId = 0, // In real app use actual ID
+                            orderId = newId,
                             customerName = order.customerName,
                             amount = order.liters * order.pricePerLiter,
                             paymentMethod = order.paymentMethod

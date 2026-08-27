@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PaymentLogDao {
     @Insert
-    suspend fun insert(paymentLog: PaymentLog)
+    suspend fun insert(paymentLog: PaymentLog): Long
 
     @Query("SELECT * FROM payment_logs ORDER BY timestamp DESC")
     fun getAllPaymentLogs(): Flow<List<PaymentLog>>

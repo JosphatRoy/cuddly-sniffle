@@ -136,14 +136,17 @@ class MainViewModel(application: Application, private val repository: OrderRepos
                 routeOrder = nextSequence,
                 notes = notes
             )
-            repository.insert(newOrder)
+            val generatedId = repository.insert(newOrder).toInt()
+            repository.logActivity("ORDER_CREATED", "New order created for ${newOrder.customerName} (${newOrder.liters}L)", generatedId)
             triggerSync()
         }
     }
 
     fun deleteOrder(orderId: Int) {
         viewModelScope.launch {
+            val order = orders.value.find { it.id == orderId }
             repository.deleteById(orderId)
+            repository.logActivity("ORDER_DELETED", "Order for ${order?.customerName ?: "ID $orderId"} was deleted", orderId)
             triggerSync()
         }
     }
@@ -151,17 +154,23 @@ class MainViewModel(application: Application, private val repository: OrderRepos
     fun updateOrder(order: Order) {
         viewModelScope.launch {
             repository.update(order)
+            repository.logActivity("ORDER_UPDATED", "Order details updated for ${order.customerName}", order.id)
             triggerSync()
         }
     }
 
 
-    fun updateOrderStatus(order: Order, newStatus: String) {
+    fun updateOrderStatus(order: Order, newStatus: String, eta: Int? = null, driverNotes: String = "") {
         viewModelScope.launch {
             val oldStatus = order.status
+            val updated = order.copy(
+                status = newStatus,
+                eta = eta,
+                driverNotes = driverNotes
+            )
+            repository.update(updated)
+            
             if (oldStatus != newStatus) {
-                val updated = order.copy(status = newStatus)
-                repository.update(updated)
                 repository.logStatusChange(
                     com.example.data.OrderStatusLog(
                         orderId = order.id,
@@ -169,8 +178,9 @@ class MainViewModel(application: Application, private val repository: OrderRepos
                         newStatus = newStatus
                     )
                 )
-                triggerSync()
+                repository.logActivity("STATUS_CHANGE", "Order for ${order.customerName} changed from $oldStatus to $newStatus", order.id)
             }
+            triggerSync()
         }
     }
 
@@ -210,6 +220,8 @@ class MainViewModel(application: Application, private val repository: OrderRepos
                 paymentMethod = paymentMethod
             )
             repository.logPayment(paymentLog)
+            repository.logActivity("PAYMENT_RECORDED", "Payment of KSh ${paymentLog.amount} received via $paymentMethod from ${order.customerName}", order.id)
+            repository.logActivity("STATUS_CHANGE", "Order for ${order.customerName} marked as Delivered", order.id)
             triggerSync()
         }
     }
@@ -284,10 +296,15 @@ class MainViewModel(application: Application, private val repository: OrderRepos
                 .filter { it.routeName == routeName }
                 .sortedBy { it.address }
             
+            var changes = 0
             routeOrders.forEachIndexed { index, order ->
                 if (order.routeOrder != index) {
                     repository.update(order.copy(routeOrder = index))
+                    changes++
                 }
+            }
+            if (changes > 0) {
+                repository.logActivity("ROUTE_OPTIMIZED", "Optimized delivery sequence for $routeName ($changes orders re-ordered)")
             }
             triggerSync()
         }

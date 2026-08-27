@@ -56,6 +56,9 @@ import com.example.ui.ViewModelFactory
 import com.example.ui.screens.DistributorDashboard
 import com.example.ui.screens.FarmerDashboard
 import com.example.ui.theme.MyApplicationTheme
+import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +70,8 @@ class MainActivity : ComponentActivity() {
         val repository = OrderRepository(
             database.orderDao(),
             database.paymentLogDao(),
-            database.orderStatusLogDao()
+            database.orderStatusLogDao(),
+            database.activityLogDao()
         )
 
         setContent {
@@ -85,6 +89,7 @@ class MainActivity : ComponentActivity() {
                     topBar = {
                         AppHeader(
                             currentRole = currentRole,
+                            isFirebaseLinked = true,
                             onRoleChange = { viewModel.setRole(it) }
                         )
                     }
@@ -126,6 +131,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppHeader(
     currentRole: UserRole,
+    isFirebaseLinked: Boolean,
     onRoleChange: (UserRole) -> Unit
 ) {
     Card(
@@ -168,6 +174,15 @@ fun AppHeader(
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    if (isFirebaseLinked) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.CloudDone,
+                            contentDescription = "Cloud Synced",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
                 Text(
                     text = "Sales & Logistics Hub",

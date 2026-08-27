@@ -43,10 +43,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,6 +101,8 @@ fun DistributorDashboard(
 
     var expandedRouteMenu by remember { mutableStateOf(false) }
     var selectedOrderForDelivery by remember { mutableStateOf<Order?>(null) }
+    var orderToDispatch by remember { mutableStateOf<Order?>(null) }
+    var showDispatchDialog by remember { mutableStateOf(false) }
     var showCamera by remember { mutableStateOf(false) }
     var showQrScanner by remember { mutableStateOf(false) }
 
@@ -237,8 +243,8 @@ fun DistributorDashboard(
                                     DistributorOrderCard(
                                         order = order,
                                         onTransitClick = {
-                                            viewModel.updateOrderStatus(order, "In Transit")
-                                            NotificationHelper.sendDispatchAlert(context, order, (15..45).random())
+                                            orderToDispatch = order
+                                            showDispatchDialog = true
                                         },
                                         onDeliverClick = { selectedOrderForDelivery = order },
                                         onCallClick = { phone: String ->
@@ -467,7 +473,97 @@ fun DistributorDashboard(
                 onClose = { showQrScanner = false }
             )
         }
+
+        if (showDispatchDialog && orderToDispatch != null) {
+            DispatchDialog(
+                order = orderToDispatch!!,
+                onConfirm = { eta, notes ->
+                    viewModel.updateOrderStatus(orderToDispatch!!, "In Transit", eta, notes)
+                    NotificationHelper.sendDispatchAlert(context, orderToDispatch!!, eta, notes)
+                    showDispatchDialog = false
+                    orderToDispatch = null
+                },
+                onDismiss = {
+                    showDispatchDialog = false
+                    orderToDispatch = null
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun DispatchDialog(
+    order: Order,
+    onConfirm: (Int, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var etaMinutes by remember { mutableStateOf(30f) }
+    var driverNotes by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocalShipping, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("Dispatch Alert")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    "Notify ${order.customerName} that their ${order.liters}L order is on the way.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("ETA (minutes)", style = MaterialTheme.typography.labelMedium)
+                        Text("${etaMinutes.toInt()} mins", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Slider(
+                        value = etaMinutes,
+                        onValueChange = { etaMinutes = it },
+                        valueRange = 5f..120f,
+                        steps = 22 // 5 min increments roughly
+                    )
+                }
+
+                OutlinedTextField(
+                    value = driverNotes,
+                    onValueChange = { driverNotes = it },
+                    label = { Text("Driver Notes (Optional)") },
+                    placeholder = { Text("e.g., Heavy traffic near depot") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                )
+
+                Text(
+                    "This will open WhatsApp or SMS to send the notification.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(etaMinutes.toInt(), driverNotes) },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Send & Start Delivery")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
